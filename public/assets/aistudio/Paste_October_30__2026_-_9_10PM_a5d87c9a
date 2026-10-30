@@ -1,0 +1,1234 @@
+# MASTER DEVELOPMENT PROMPT — MUSABBIH (مُسَبِّح)
+## Build a Complete Premium Native Android Tasbeeh Application
+
+You are an expert Android development team consisting of:
+
+- A senior Android engineer specializing in Kotlin and Jetpack Compose.
+- A software architect specializing in Clean Architecture and maintainable applications.
+- A professional Arabic RTL UI/UX designer.
+- A database engineer specializing in Room and SQLite.
+- A mobile security and privacy engineer.
+- A QA engineer responsible for automated testing and release quality.
+
+Your task is to **design, implement, test, and deliver a complete, production-quality native Android application** named **Musabbih (مُسَبِّح)**.
+
+Do not treat this as a prototype, tutorial, or simple counter demonstration.
+
+Build a polished, functional, maintainable Android application with a complete v1 feature set.
+
+The final result must be a real Android Studio project that can be built, installed, tested, and eventually published on Google Play.
+
+---
+
+# 1. PRODUCT IDENTITY
+
+Application name:
+
+Musabbih – مُسَبِّح
+
+Package name:
+
+com.musabbih.app
+
+Platform:
+
+Android only.
+
+Technology:
+
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Native Android APIs
+
+Minimum Android version:
+
+Android 8.0 (API 26).
+
+Target SDK:
+
+Use a currently supported stable Android SDK and verify Google Play's target API requirements before release.
+
+Application language:
+
+Arabic only for v1.
+
+Layout direction:
+
+RTL-first. All Arabic text, navigation, icons, spacing, alignment, and interactions must be designed correctly for right-to-left interfaces.
+
+Product positioning:
+
+A premium, peaceful, modern digital Tasbeeh and Dhikr companion.
+
+The application should feel elegant, spiritual, simple, trustworthy, fast, and distraction-free.
+
+---
+
+# 2. CORE PRODUCT PRINCIPLES
+
+Follow these principles throughout development:
+
+1. Offline-first: all primary functionality must work without an internet connection.
+2. Local-only: no accounts, backend, cloud services, or external dependencies for normal operation.
+3. Privacy-first: collect no personal information and implement no analytics or tracking.
+4. Reliability: never lose a counter increment.
+5. Simplicity: the counting experience must be extremely easy to use.
+6. Accessibility: support TalkBack, appropriate contrast, large touch targets, and Android font scaling.
+7. Maintainability: use clear architecture, modular responsibilities, and meaningful names.
+8. Data integrity: never silently overwrite or delete user data.
+9. Religious accuracy: never invent Quranic verses, hadith, supplications, sources, or authenticity claims.
+10. Premium design: avoid generic template-like interfaces.
+
+Do not introduce unnecessary features that compromise these principles.
+
+---
+
+# 3. VISUAL IDENTITY AND DESIGN SYSTEM
+
+The visual direction is premium minimalist, inspired by deep forest green, warm ivory, and subtle champagne gold.
+
+## Dark theme palette
+
+- Background: #111811
+- Surface: #1B241D
+- Elevated surface: #263128
+- Primary accent: #D5C29B
+- Muted gold: #806A43
+- Primary text: #F3EBDD
+- Secondary text: #A6B09F
+
+## Light theme palette
+
+- Background: #F7F4EC
+- Surface: #FFFFFF
+- Primary text: #282B25
+- Accent: #806A43
+- Supporting colors should harmonize with the dark theme.
+
+## Typography
+
+Use two complementary Arabic typefaces:
+
+- Noto Naskh Arabic for Quranic verses, Dhikr, and longer religious text.
+- Noto Sans Arabic for navigation, buttons, labels, settings, and general interface text.
+
+Bundle licensed font files in the application and include the appropriate license notices.
+
+Do not assume the user's device has a specific Arabic font installed.
+
+## Design requirements
+
+- Carefully designed spacing and consistent layout.
+- Subtle rounded corners.
+- Elegant surfaces and restrained shadows.
+- Subtle transitions and animations.
+- No excessive gradients.
+- No unnecessary decorative illustrations.
+- No distracting sound effects.
+- No excessive particles or celebratory animations.
+- Proper contrast in both themes.
+- Consistent iconography.
+- Correct Arabic typography and line spacing.
+- Correct RTL behavior across every screen.
+
+Support:
+- Light theme.
+- Dark theme.
+- System default theme.
+
+Allow users to choose between Arabic-Indic numerals (١٢٣) and Western numerals (123).
+
+---
+
+# 4. APPLICATION NAVIGATION
+
+Implement five main destinations using a polished Arabic bottom navigation bar.
+
+1. الرئيسية — Home
+2. الأذكار — Dhikr library
+3. الإحصائيات — Statistics
+4. السجل — History
+5. الإعدادات — Settings
+
+Use Navigation Compose.
+
+Preserve appropriate navigation state when switching destinations.
+
+The navigation must work correctly with Android back navigation.
+
+Each screen must have:
+- Proper loading states where applicable.
+- Empty states.
+- Error handling.
+- Correct RTL alignment.
+- Consistent design language.
+
+---
+
+# 5. HOME SCREEN — MAIN TASBEEH COUNTER
+
+This is the most important screen.
+
+It must be the central experience of the application.
+
+## Layout
+
+The home screen should contain:
+
+- Application identity or a subtle greeting.
+- Current Dhikr Arabic text.
+- Optional source/details access.
+- Large, highly readable counter.
+- Target count, if configured.
+- Progress indicator.
+- A large counting surface.
+- Undo button.
+- Reset button.
+- Dhikr selection button.
+- Session status.
+
+The counter should dominate the interface visually.
+
+## Counting interaction
+
+The user should be able to tap a large central area to increment the count.
+
+Requirements:
+
+- Every valid tap increments the count by exactly one.
+- Support rapid repeated tapping.
+- Do not introduce artificial tap delays.
+- Do not lose increments because of UI recomposition.
+- Do not rely on animations to determine the count.
+- Do not debounce away legitimate taps.
+- Persist accepted increments reliably.
+- Provide optional subtle haptic feedback.
+- Haptic feedback must be configurable.
+
+The counter should remain responsive during rapid interactions.
+
+## Target behavior
+
+Users can choose a target or unlimited counting.
+
+Examples:
+- 33
+- 100
+- 500
+- Custom target
+- Unlimited
+
+IMPORTANT:
+
+Reaching the target must NOT stop counting.
+
+When the counter first crosses the target:
+- Provide subtle visual feedback.
+- Optionally provide haptic feedback.
+- Show a small milestone indication.
+- Continue counting normally.
+
+Do not automatically move to another Dhikr.
+
+Do not automatically reset the counter.
+
+## Undo
+
+Allow the user to undo the last accepted increment.
+
+Undo must:
+- Restore the previous count.
+- Update the database correctly.
+- Update daily statistics.
+- Be unavailable if there is nothing to undo.
+- Work after app recreation when undo history is available.
+
+## Reset
+
+Resetting must require confirmation.
+
+The reset must correctly update the current session and its statistics.
+
+## Session behavior
+
+- Only one active session at a time in v1.
+- Switching Dhikr must preserve the previous session.
+- The application must restore an unfinished session after process death or device restart.
+- Reopening the app must restore the exact count.
+- A session reaching its target does not mean it is completed.
+- Completing a session must be a separate user action.
+
+---
+
+# 6. DHIKR LIBRARY
+
+Create a comprehensive Arabic Dhikr library.
+
+The library should be organized into categories:
+
+1. أذكار الصباح
+2. أذكار المساء
+3. أذكار بعد الصلاة
+4. التسبيح
+5. التحميد
+6. التكبير
+7. الاستغفار
+8. الصلاة على النبي
+9. الأدعية القرآنية
+10. الأدعية النبوية
+11. أذكار النوم
+12. أذكار الاستيقاظ
+13. أذكار عامة
+
+## Library functionality
+
+Implement:
+
+- Category browsing.
+- Search.
+- Favorites.
+- Dhikr details.
+- Suggested repetition counts when verified.
+- Source attribution.
+- Add custom Dhikr.
+- Edit custom Dhikr.
+- Delete custom Dhikr.
+- Select a Dhikr and start counting.
+
+## Dhikr details
+
+Display:
+
+- Arabic text.
+- Category.
+- Source.
+- Reference.
+- Suggested repetitions, if verified.
+- Optional explanation or translation only if reliable content is available.
+
+## Religious content integrity
+
+This requirement is critical.
+
+Never generate fake religious content.
+
+Never invent hadith references.
+
+Never claim a hadith is authentic without reliable verification.
+
+Never present AI-generated supplications as Quranic or Prophetic text.
+
+For every built-in entry, store:
+
+- Stable ID.
+- Exact Arabic wording.
+- Category ID.
+- Source type.
+- Source reference.
+- Suggested target, if verified.
+- Verification status.
+- Content revision/version.
+
+Use these verification statuses:
+
+- UNREVIEWED
+- REVIEWED
+- NEEDS_CORRECTION
+
+Quranic entries must have their exact Surah and Ayah references.
+
+Hadith entries must have a precise collection/reference whenever available.
+
+If the reference or authenticity cannot be verified, mark the entry accordingly and do not make unsupported claims.
+
+Start with a smaller, carefully reviewed library rather than filling the database with questionable content.
+
+Aim for 60–100 verified entries over time.
+
+Preserve the exact original Arabic text.
+
+For searching, create a separate normalized search field that can ignore diacritics. Never modify the original display text.
+
+Built-in Dhikr entries must not be deletable by users.
+
+---
+
+# 7. CUSTOM DHIKR
+
+Allow users to create their own Dhikr entries.
+
+Fields:
+
+- Arabic text (required).
+- Optional title.
+- Category.
+- Optional target.
+- Optional personal note.
+
+Validation:
+
+- Reject empty text.
+- Enforce reasonable maximum lengths.
+- Validate target values.
+- Prevent malformed records.
+- Clearly distinguish custom entries from built-in entries.
+
+Allow editing and deleting custom entries.
+
+Do not attach fabricated religious sources to custom entries.
+
+---
+
+# 8. STATISTICS
+
+Create a complete statistics screen.
+
+Show:
+
+- Total repetitions.
+- Today's repetitions.
+- Daily activity.
+- Weekly activity.
+- Monthly activity.
+- Completed sessions.
+- Most-used Dhikr.
+- Unique Dhikr used.
+- Current streak.
+- Longest streak.
+
+Use elegant charts and clear Arabic labels.
+
+Do not overwhelm the user with unnecessary metrics.
+
+## Date and timezone correctness
+
+Statistics must use the device's local calendar.
+
+Handle:
+- Midnight boundaries.
+- Timezone changes.
+- Daylight-saving changes where applicable.
+- Sessions continuing across midnight.
+
+Do not calculate daily statistics only from the session's start date.
+
+Implement a reliable per-day attribution system.
+
+A session that starts before midnight and continues after midnight must have its repetitions correctly attributed to each respective day.
+
+Statistics must be rebuildable from the underlying session data.
+
+---
+
+# 9. HISTORY
+
+Create a history screen showing previous counting sessions.
+
+Each record should include:
+
+- Dhikr name.
+- Count.
+- Target, if any.
+- Start time.
+- Completion time, if completed.
+- Session status.
+- Date.
+
+Allow users to open session details.
+
+Provide useful filtering:
+- Today.
+- This week.
+- This month.
+- All history.
+
+Support empty states.
+
+Never silently discard historical sessions.
+
+---
+
+# 10. SETTINGS
+
+Implement the following settings:
+
+## Appearance
+- Light theme.
+- Dark theme.
+- System theme.
+
+## Counting
+- Haptic feedback on/off.
+- Number format: Arabic-Indic or Western.
+
+## Reminders
+- Morning reminders.
+- Evening reminders.
+- Custom reminder time.
+- Enable/disable reminders.
+
+Reminders must be disabled by default.
+
+Use WorkManager for non-exact reminders.
+
+Only request notification permission when the user enables reminders on Android 13 and later.
+
+If permission is denied, explain the situation without preventing use of the app.
+
+## Backup
+- Export backup.
+- Import backup.
+
+## About
+- Application name.
+- Version.
+- Privacy information.
+- Acknowledgements and content-source information.
+
+---
+
+# 11. BACKUP AND RESTORE
+
+Implement user-controlled local JSON backup.
+
+No cloud service is required.
+
+Use Android Storage Access Framework.
+
+Do not request broad storage permissions.
+
+## Export
+
+Export:
+- Custom Dhikr.
+- Session history.
+- Statistics.
+- User preferences.
+- Relevant user-created data.
+
+Include metadata:
+
+- schemaVersion
+- appVersion
+- exportedAt
+
+## Import
+
+Import must:
+
+1. Validate the JSON structure.
+2. Validate schema version.
+3. Validate data types and limits.
+4. Validate UUID references.
+5. Detect duplicates.
+6. Preserve built-in Dhikr entries.
+7. Preview the import.
+8. Ask for confirmation.
+9. Perform the operation transactionally.
+10. Report success or failure.
+
+Never silently overwrite or delete existing user data.
+
+Implement versioned backup migration support.
+
+Test malformed, incomplete, duplicated, and incompatible backup files.
+
+---
+
+# 12. TECHNICAL ARCHITECTURE
+
+Use native Android development.
+
+Required technologies:
+
+- Kotlin.
+- Jetpack Compose.
+- Material 3.
+- Navigation Compose.
+- Room.
+- SQLite.
+- DataStore Preferences.
+- Kotlin Coroutines.
+- Kotlin Flow.
+- Kotlin Serialization.
+- WorkManager.
+- JUnit.
+- Compose UI testing.
+
+Use KSP for Room annotation processing, with versions compatible with the selected Kotlin version.
+
+Use manual dependency injection initially. Do not introduce Hilt unless there is a compelling technical reason.
+
+Use Gradle Version Catalogs.
+
+Pin compatible stable dependency versions.
+
+Before selecting versions, verify compatibility between:
+- Android Gradle Plugin.
+- Gradle.
+- Kotlin.
+- Compose Compiler/plugin.
+- KSP.
+- Room.
+- Navigation.
+- DataStore.
+- WorkManager.
+
+Do not blindly use incompatible or preview dependencies.
+
+Use Java 17 or a currently supported compatible toolchain.
+
+## Architecture
+
+Use a pragmatic Clean Architecture and MVVM approach.
+
+Separate:
+
+- Presentation.
+- Domain.
+- Data.
+
+Domain must not depend on Room or Android UI frameworks.
+
+Repositories should expose domain-level contracts.
+
+ViewModels should expose UI state using StateFlow.
+
+Use immutable UI state.
+
+Use structured concurrency.
+
+Handle errors explicitly.
+
+Avoid massive ViewModels and giant classes.
+
+Keep business logic independent of composables.
+
+## Suggested project organization
+
+Start with a manageable Gradle module count.
+
+Use clear feature-oriented packages:
+
+app/
+core/
+  common/
+  database/
+  datastore/
+  designsystem/
+  domain/
+feature/
+  home/
+  adhkar/
+  statistics/
+  history/
+  settings/
+
+You may start with packages inside the app module if a multi-module structure creates unnecessary build complexity. Keep clear boundaries so modules can be extracted later.
+
+---
+
+# 13. DATABASE DESIGN
+
+Use Room.
+
+Create the following tables.
+
+## dhikr
+
+Fields:
+
+- id: String UUID, primary key.
+- arabicText: String.
+- normalizedSearchText: String.
+- optional title.
+- categoryId.
+- sourceType.
+- sourceReference.
+- verificationStatus.
+- defaultTarget: Long?.
+- isBuiltIn: Boolean.
+- isFavorite: Boolean.
+- createdAt.
+- updatedAt.
+- contentRevision.
+
+## dhikr_category
+
+Fields:
+
+- id.
+- Arabic name.
+- optional description.
+- sortOrder.
+
+## counter_session
+
+Fields:
+
+- id.
+- dhikrId.
+- currentCount: Long.
+- targetCount: Long?.
+- startedAt.
+- updatedAt.
+- completedAt: nullable.
+- status: ACTIVE, COMPLETED, PAUSED.
+
+Only one active session at a time.
+
+## counter_action
+
+Fields:
+
+- id.
+- sessionId.
+- actionType.
+- previousCount.
+- newCount.
+- createdAt.
+
+Retain the last 20 undoable increment actions per session.
+
+## daily_summary
+
+Fields:
+
+- localDate.
+- totalRepetitions.
+- completedSessions.
+- uniqueDhikrCount.
+- updatedAt.
+
+This table should be rebuildable.
+
+## session_daily_totals
+
+Fields:
+
+- sessionId.
+- localDate.
+- timezoneId.
+- repetitions.
+
+Use a composite primary key of sessionId and localDate.
+
+Update this table inside the same database transaction as each accepted increment and undo.
+
+This is essential for correctly attributing repetitions across midnight.
+
+Use foreign keys and indexes where appropriate.
+
+Implement proper Room migrations.
+
+Never use destructive migrations in production.
+
+---
+
+# 14. COUNTER ENGINE — CRITICAL IMPLEMENTATION
+
+Do not implement counting as a simple Compose state variable.
+
+Create an independent counter engine/repository.
+
+All count operations must pass through this engine.
+
+The engine must support:
+
+- Increment.
+- Undo.
+- Reset.
+- Target crossing detection.
+- Session creation.
+- Session completion.
+- Session restoration.
+
+## Transaction behavior
+
+Every accepted increment must execute as an atomic Room transaction:
+
+1. Load the active session.
+2. Validate the session.
+3. Read the previous count.
+4. Calculate the new count safely.
+5. Record the counter action.
+6. Update the session.
+7. Detect whether the target has just been crossed.
+8. Update session_daily_totals.
+9. Update daily_summary or mark it for recalculation.
+10. Commit.
+
+Do not allow unordered concurrent database writes.
+
+Use a serialized action processor or equivalent mechanism.
+
+Avoid integer overflow.
+
+Use Long for counts.
+
+The count must never become negative.
+
+Undo must correctly reverse the previous increment and associated daily totals.
+
+The UI must not display a count as permanently accepted before the database operation succeeds.
+
+Provide responsive optimistic UI only if rollback and failure handling are implemented correctly.
+
+The engine must survive:
+- Rapid taps.
+- App process death.
+- Device restart.
+- Navigation changes.
+- Theme changes.
+- Screen recreation.
+
+## Counter state
+
+Create an appropriate immutable CounterState containing:
+
+- sessionId.
+- dhikrId.
+- count.
+- target.
+- undoAvailable.
+- targetReached.
+- loading.
+- progress.
+
+Progress should be clamped between 0 and 1.
+
+Unlimited targets should be handled correctly.
+
+Target feedback must occur only when the count crosses from below target to at or above target, not on every subsequent increment.
+
+---
+
+# 15. DATA PERSISTENCE AND RESTORATION
+
+Use Room for structured application data.
+
+Use DataStore for simple preferences:
+
+- Theme.
+- Number format.
+- Haptic setting.
+- Reminder settings.
+- Other UI preferences.
+
+Restore the active session when the application starts.
+
+Do not lose a session because the process was killed.
+
+Do not rely exclusively on ViewModel memory.
+
+Make sure the last accepted increment is persisted.
+
+Test application restart and device reboot behavior.
+
+---
+
+# 16. PRIVACY AND ANDROID MANIFEST
+
+Privacy is a core product requirement.
+
+Use a minimal AndroidManifest.
+
+The application should not request:
+
+- INTERNET.
+- Location.
+- Contacts.
+- Microphone.
+- Camera.
+- Broad storage permissions.
+
+Do not include:
+- Advertising SDKs.
+- Analytics SDKs.
+- Tracking libraries.
+- Unnecessary third-party SDKs.
+
+Use `supportsRtl=true`.
+
+Set `allowBackup=false` if appropriate for the selected backup design.
+
+Configure Android data extraction and backup rules to exclude private application data from automatic cloud/device-transfer backup.
+
+The official backup method is the user's explicit JSON export.
+
+Test this behavior.
+
+Only add notification permission for the optional reminders feature.
+
+Do not request permissions unnecessarily.
+
+---
+
+# 17. ACCESSIBILITY
+
+Implement:
+
+- TalkBack-compatible controls.
+- Meaningful content descriptions.
+- Appropriate semantic roles.
+- Large counting touch target.
+- Good color contrast.
+- Scalable typography.
+- Support for Android font scaling.
+- Correct focus order.
+- Accessible dialogs and navigation.
+
+The counter must remain usable with accessibility services.
+
+Do not rely only on color or animation to communicate target completion.
+
+---
+
+# 18. APPLICATION ICON AND BRANDING
+
+The application uses a premium icon concept:
+
+- Deep emerald/forest green background.
+- Elegant gold mihrab arch.
+- Gold Arabic calligraphy reading "سبحان".
+- Gold curved prayer beads and tassel.
+- No extra text.
+- No people.
+
+Use this visual direction consistently.
+
+Prepare proper Android launcher icon assets.
+
+Prefer adaptive icons with separate foreground and background layers.
+
+Ensure the icon remains legible at small sizes.
+
+Do not stretch or distort the artwork.
+
+If the source artwork is unavailable, create an original vector-based approximation using Android-compatible resources rather than pretending to have imported the original file.
+
+Create a suitable splash screen using the same identity.
+
+---
+
+# 19. TESTING REQUIREMENTS
+
+Testing is mandatory.
+
+Do not consider the application complete simply because it compiles.
+
+## Counter unit tests
+
+Test:
+
+- Initial count.
+- Increment.
+- Multiple rapid increments.
+- Undo.
+- Reset.
+- Target crossing.
+- Continuing after target.
+- Unlimited counting.
+- Invalid values.
+- Overflow protection.
+- Session restoration.
+
+## Statistics tests
+
+Test:
+
+- Daily totals.
+- Weekly totals.
+- Monthly totals.
+- Streak calculation.
+- Timezone changes.
+- Midnight crossing.
+- Sessions spanning multiple days.
+- Undo affecting daily totals.
+
+## Database tests
+
+Test:
+
+- Repository operations.
+- Transaction integrity.
+- Foreign keys.
+- Migrations.
+- Data restoration.
+- Backup import/export.
+- Custom Dhikr validation.
+
+## UI tests
+
+Test:
+
+- Arabic RTL layouts.
+- Navigation.
+- Counter interactions.
+- Themes.
+- Number formatting.
+- Custom Dhikr creation.
+- Favorites.
+- Search.
+- Empty states.
+- Accessibility semantics.
+- Font scaling.
+- Notification permission denial.
+
+## Integration tests
+
+Test these scenarios:
+
+1. Perform 100 rapid taps.
+2. Kill the application process.
+3. Reopen the application.
+4. Verify the exact count.
+5. Undo an increment.
+6. Restart the device.
+7. Verify session restoration.
+8. Switch Dhikr.
+9. Verify the old session is preserved.
+10. Cross midnight during an active session.
+11. Verify daily attribution.
+12. Export and import a backup.
+
+---
+
+# 20. PERFORMANCE AND CODE QUALITY
+
+Requirements:
+
+- No unnecessary recompositions.
+- No main-thread database operations.
+- No blocking operations on the UI thread.
+- No memory leaks.
+- No hardcoded configuration scattered across features.
+- No duplicated business logic.
+- No giant composable functions.
+- No placeholder buttons.
+- No fake statistics.
+- No hardcoded counter behavior in UI.
+- No swallowed exceptions.
+- No unsafe destructive migrations.
+
+Use:
+- Kotlin idioms.
+- Meaningful naming.
+- Small functions.
+- Reusable composables.
+- Centralized design tokens.
+- Explicit error handling.
+- Appropriate logging without sensitive data.
+
+Keep the project understandable and easy to extend.
+
+---
+
+# 21. DEVELOPMENT AND DELIVERY STRATEGY
+
+Do not try to generate the entire application in one enormous response.
+
+Develop it in verified phases.
+
+However, do not stop after providing a plan. Your job is to implement the project.
+
+## Phase 1 — Foundation
+
+Create:
+
+- Android Studio project.
+- Gradle configuration.
+- Version catalog.
+- Kotlin and Compose setup.
+- MainActivity.
+- Navigation.
+- RTL support.
+- Theme system.
+- Design system.
+- Room database foundation.
+- DataStore foundation.
+- Initial home screen.
+
+Deliver a project that builds and runs.
+
+## Phase 2 — Counter engine
+
+Implement:
+
+- Counter domain models.
+- Repository contracts.
+- Room implementations.
+- Increment.
+- Undo.
+- Reset.
+- Target crossing.
+- Session management.
+- Restoration.
+- Unit tests.
+
+Verify rapid counting and persistence.
+
+## Phase 3 — Dhikr library
+
+Implement:
+
+- Categories.
+- Built-in Dhikr data.
+- Search.
+- Favorites.
+- Details.
+- Custom Dhikr.
+- Content verification metadata.
+
+## Phase 4 — Statistics and history
+
+Implement:
+
+- Session history.
+- Daily totals.
+- Weekly and monthly statistics.
+- Streaks.
+- Charts.
+- Midnight and timezone correctness.
+
+## Phase 5 — Settings and reminders
+
+Implement:
+
+- Themes.
+- Number format.
+- Haptics.
+- Optional reminders.
+- Permission handling.
+- About screen.
+
+## Phase 6 — Backup and restore
+
+Implement:
+
+- JSON serialization.
+- Export.
+- Import.
+- Validation.
+- Preview.
+- Transactional restore.
+- Backup migration.
+
+## Phase 7 — Polish and release preparation
+
+Implement:
+
+- Final UI polish.
+- Accessibility.
+- Adaptive launcher icons.
+- Splash screen.
+- Performance optimization.
+- Full test suite.
+- Release build configuration.
+- Signed Android App Bundle instructions.
+- Google Play preparation.
+
+---
+
+# 22. IMPORTANT DEVELOPMENT RULES
+
+Follow these rules strictly.
+
+1. Work on the actual project files whenever the environment supports file creation and editing.
+2. Do not give me only pseudocode.
+3. Do not leave critical functionality as TODO comments.
+4. Do not use fake implementations to make screens look functional.
+5. Do not claim a build passed unless you actually ran it successfully.
+6. Do not claim tests passed unless they were executed.
+7. Do not invent dependency versions. Verify compatibility.
+8. Do not silently remove features from the specification.
+9. Do not sacrifice reliability for visual effects.
+10. Do not sacrifice religious accuracy for content quantity.
+11. Keep all functionality offline.
+12. Preserve user data across application upgrades.
+13. Explain any unavoidable limitation clearly.
+14. When changing an existing file, provide the complete updated file or apply the edit directly.
+15. Keep a clear record of implemented features and remaining work.
+
+If something is ambiguous, choose the safest and simplest implementation that respects the product requirements.
+
+Do not repeatedly ask me questions about decisions already specified in this prompt.
+
+---
+
+# 23. REQUIRED FIRST ACTION
+
+Start with Phase 1.
+
+Before writing code:
+
+1. Inspect the available development environment and project files.
+2. Determine whether a project already exists.
+3. Select compatible stable Android/Gradle/Kotlin/Compose dependencies.
+4. Establish the project structure.
+5. Create a concise implementation checklist.
+
+Then begin implementing the actual project.
+
+For the first delivery, prioritize:
+
+- A clean, buildable Android project.
+- Correct package name: com.musabbih.app.
+- Kotlin and Jetpack Compose.
+- Material 3.
+- Arabic RTL.
+- Premium dark and light themes.
+- Five working navigation destinations.
+- A polished home counter screen.
+- Room database foundation.
+- DataStore foundation.
+- A basic persistent counter implementation.
+
+The first milestone must be runnable, not merely a collection of code snippets.
+
+After implementing Phase 1:
+
+- Run Gradle sync/build if the environment permits.
+- Run available tests.
+- Fix compilation errors.
+- Explain what files were created.
+- Explain how to run the application in Android Studio.
+- Clearly identify what is implemented and what remains.
+
+Then continue through the remaining phases without changing the agreed product specification.
+
+---
+
+# 24. FINAL DEFINITION OF DONE
+
+Musabbih v1 is complete only when:
+
+- The application builds successfully.
+- It installs and runs on Android.
+- All five destinations work.
+- Counting works reliably.
+- Rapid taps are not lost.
+- Undo and reset work.
+- Target crossing works correctly.
+- Counting continues beyond the target.
+- Sessions survive process death and device restart.
+- Dhikr library works.
+- Custom Dhikr works.
+- Search and favorites work.
+- Statistics are accurate.
+- History works.
+- Themes work.
+- Arabic number formatting works.
+- Optional reminders work with proper permissions.
+- JSON export and import work.
+- Database migrations are safe.
+- Accessibility is implemented.
+- No internet connection is required.
+- No unnecessary permissions are requested.
+- Automated tests cover critical functionality.
+- The release build can be prepared for Google Play.
+
+The final application should feel like a professionally designed, reliable, premium Arabic Tasbeeh product — not a basic click counter.
+
+**Begin with Phase 1 and build Musabbih step by step.**
