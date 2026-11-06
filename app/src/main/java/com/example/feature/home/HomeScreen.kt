@@ -1,7 +1,6 @@
 package com.example.feature.home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -14,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -52,7 +53,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -76,7 +76,17 @@ import com.example.core.engine.CounterEngine
 import com.example.core.engine.CounterEvent
 import com.example.core.engine.CounterUiState
 import com.example.core.engine.HapticFeedbackHelper
+import com.example.core.engine.JourneyEngine
+import com.example.core.engine.JourneyUiState
 import com.example.core.ui.ArabicUtils
+import com.example.feature.journey.DhikrCompletionPanel
+import com.example.feature.journey.GuidedJourneyHeader
+import com.example.feature.journey.IncompleteDhikrWarningDialog
+import com.example.feature.journey.JourneyCompletionScreen
+import com.example.feature.journey.JourneyListModalSheet
+import com.example.feature.journey.JourneyNavigationControls
+import com.example.feature.journey.JourneyOverviewDialog
+import com.example.feature.journey.NextDhikrPreviewDialog
 import com.example.ui.theme.GoldGlow
 import com.example.ui.theme.NotoNaskhArabicFamily
 import kotlinx.coroutines.flow.collectLatest
@@ -86,11 +96,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     counterEngine: CounterEngine,
+    journeyEngine: JourneyEngine,
     hapticHelper: HapticFeedbackHelper,
     hapticEnabled: Boolean,
     useArabicIndic: Boolean,
     uiState: CounterUiState,
+    journeyState: JourneyUiState,
     onNavigateToAdhkar: () -> Unit,
+    onNavigateToHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -127,13 +140,40 @@ fun HomeScreen(
         }
     }
 
+    // If journey just completed, display dedicated JourneyCompletionScreen
+    if (journeyState.isJourneyCompleted && journeyState.journey != null) {
+        val j = journeyState.journey
+        JourneyCompletionScreen(
+            journeyTitle = j.title,
+            completedItemsCount = j.completedItemsCount,
+            totalItemsCount = j.totalItemsCount,
+            totalRepetitions = j.totalRepetitions,
+            startedAt = j.startedAt,
+            useArabicIndic = useArabicIndic,
+            onReturnHome = {
+                scope.launch { journeyEngine.exitJourney() }
+            },
+            onViewHistory = {
+                scope.launch {
+                    journeyEngine.exitJourney()
+                    onNavigateToHistory()
+                }
+            },
+            onRestartJourney = {
+                scope.launch { journeyEngine.restartJourney() }
+            },
+            modifier = modifier
+        )
+        return
+    }
+
     val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -147,7 +187,7 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -179,11 +219,71 @@ fun HomeScreen(
                 }
             }
 
+            // If a journey is active, show the Guided Journey Header
+            if (journeyState.isJourneyActive && journeyState.journey != null) {
+                val j = journeyState.journey
+                val overallProgress = if (j.totalItemsCount > 0) {
+                    j.completedItemsCount.toFloat() / j.totalItemsCount.toFloat()
+                } else 0f
+
+                GuidedJourneyHeader(
+                    journeyTitle = j.title,
+                    currentIndex = journeyState.currentItemIndex,
+                    totalItems = j.totalItemsCount,
+                    overallProgress = overallProgress,
+                    useArabicIndic = useArabicIndic,
+                    onOpenList = { journeyEngine.setDhikrListSheetVisible(true) },
+                    onExitJourney = { scope.launch { journeyEngine.exitJourney() } },
+                    modifier = Modifier.testTag("guided_journey_header")
+                )
+            } else if (journeyState.existingUnfinishedJourney != null) {
+                // Subtle banner to resume unfinished journey
+                val u = journeyState.existingUnfinishedJourney
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "رحلة ${u.title} قيد التقدم",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "أكملت ${ArabicUtils.formatNumber(u.completedItemsCount.toLong(), useArabicIndic)} من ${ArabicUtils.formatNumber(u.totalItemsCount.toLong(), useArabicIndic)} أذكار",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Button(
+                            onClick = { scope.launch { journeyEngine.resumeJourney(u.id) } },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("متابعة", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
             // Current Dhikr Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 6.dp)
                     .clickable { showDetailsDialog = true }
                     .testTag("dhikr_card"),
                 shape = RoundedCornerShape(20.dp),
@@ -214,20 +314,20 @@ fun HomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
                         text = dhikr?.arabicText ?: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
                         fontFamily = NotoNaskhArabicFamily,
-                        fontSize = 22.sp,
-                        lineHeight = 36.sp,
+                        fontSize = 21.sp,
+                        lineHeight = 34.sp,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = dhikr?.sourceReference ?: "",
@@ -237,86 +337,112 @@ fun HomeScreen(
                 }
             }
 
-            // Target Selection Chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val targets = listOf(33L, 100L, null)
-                targets.forEach { targetOption ->
-                    val isSelected = uiState.target == targetOption
-                    val label = when (targetOption) {
-                        null -> "مفتوح ∞"
-                        else -> ArabicUtils.formatNumber(targetOption, useArabicIndic)
-                    }
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = {
-                            scope.launch { counterEngine.setTarget(targetOption) }
-                        },
-                        label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.testTag("target_chip_${targetOption ?: "unlimited"}")
-                    )
-                }
-
-                // Custom Target Button
-                IconButton(
-                    onClick = { showTargetDialog = true },
-                    modifier = Modifier.testTag("custom_target_button")
+            // Target Selection Chips (only show in free counting mode when not in guided journey)
+            if (!journeyState.isJourneyActive) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = "تحديد هدف مخصص",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    val targets = listOf(33L, 100L, null)
+                    targets.forEach { targetOption ->
+                        val isSelected = uiState.target == targetOption
+                        val label = when (targetOption) {
+                            null -> "مفتوح ∞"
+                            else -> ArabicUtils.formatNumber(targetOption, useArabicIndic)
+                        }
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                scope.launch { counterEngine.setTarget(targetOption) }
+                            },
+                            label = { Text(text = label, style = MaterialTheme.typography.labelMedium) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier.testTag("target_chip_${targetOption ?: "unlimited"}")
+                        )
+                    }
+
+                    // Custom Target Button
+                    IconButton(
+                        onClick = { showTargetDialog = true },
+                        modifier = Modifier.testTag("custom_target_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "تحديد هدف مخصص",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
-            // Milestone Banner
+            // Completion Panel during Journey when current Dhikr target is reached
             AnimatedVisibility(
-                visible = showMilestoneBanner || (uiState.targetReached && uiState.target != null),
+                visible = journeyState.isJourneyActive && journeyState.isItemCompletedPromptVisible,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                    )
+                val isLast = journeyState.currentItemIndex >= (journeyState.items.size - 1)
+                DhikrCompletionPanel(
+                    onNextDhikr = {
+                        scope.launch { journeyEngine.requestNextDhikr() }
+                    },
+                    onRepeatDhikr = {
+                        scope.launch { journeyEngine.repeatCurrentDhikr() }
+                    },
+                    onFinishJourney = {
+                        scope.launch { journeyEngine.exitJourney() }
+                    },
+                    isLastItem = isLast,
+                    modifier = Modifier.testTag("dhikr_completion_panel")
+                )
+            }
+
+            // Milestone Banner for non-journey mode
+            if (!journeyState.isJourneyActive) {
+                AnimatedVisibility(
+                    visible = showMilestoneBanner || (uiState.targetReached && uiState.target != null),
+                    enter = fadeIn(),
+                    exit = fadeOut()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        )
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "تم الهدف",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "ما شاء الله، أتممت الهدف المستهدف! استمر بالتسبيح مباركاً.",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "تم الهدف",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "ما شاء الله، أتممت الهدف المستهدف! استمر بالتسبيح مباركاً.",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Main Tasbeeh Counting Circle
             val animatedProgress by animateFloatAsState(
@@ -328,7 +454,7 @@ fun HomeScreen(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .fillMaxWidth(0.85f)
+                    .fillMaxWidth(0.82f)
                     .aspectRatio(1f)
                     .scale(animatedScale)
                     .clip(CircleShape)
@@ -377,7 +503,7 @@ fun HomeScreen(
                         modifier = Modifier.testTag("counter_text")
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     val targetLabel = if (uiState.target != null) {
                         "من ${ArabicUtils.formatNumber(uiState.target, useArabicIndic)}"
@@ -390,23 +516,23 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "المس للشاشة للتسبيح",
+                        text = "المس الشاشة للتسبيح",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Action Buttons: Undo, Reset, Complete Session
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -417,15 +543,16 @@ fun HomeScreen(
                         scope.launch { counterEngine.undo() }
                     },
                     enabled = uiState.undoAvailable,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("undo_button")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Undo,
                         contentDescription = "تراجع",
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "تراجع", style = MaterialTheme.typography.labelMedium)
                 }
 
@@ -433,35 +560,53 @@ fun HomeScreen(
                 OutlinedButton(
                     onClick = { showResetDialog = true },
                     enabled = uiState.count > 0,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("reset_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "تصفير",
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "تصفير", style = MaterialTheme.typography.labelMedium)
                 }
 
-                // Complete Session Button
-                FilledTonalButton(
-                    onClick = {
-                        scope.launch { counterEngine.completeSession() }
-                    },
-                    enabled = uiState.count > 0,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.testTag("complete_session_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "إنهاء الجلسة",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "ختم الورد", style = MaterialTheme.typography.labelMedium)
+                // If in journey, complete session finishes or stays
+                if (!journeyState.isJourneyActive) {
+                    FilledTonalButton(
+                        onClick = {
+                            scope.launch { counterEngine.completeSession() }
+                        },
+                        enabled = uiState.count > 0,
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("complete_session_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "إنهاء الجلسة",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "ختم الورد", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
+            }
+
+            // Journey Navigation Controls (Previous, Dhikr List, Skip, Next)
+            if (journeyState.isJourneyActive) {
+                Spacer(modifier = Modifier.height(8.dp))
+                JourneyNavigationControls(
+                    hasPrevious = journeyState.currentItemIndex > 0,
+                    hasNext = journeyState.currentItemIndex < (journeyState.items.size - 1),
+                    onPrevious = { scope.launch { journeyEngine.previousDhikr() } },
+                    onNext = { scope.launch { journeyEngine.requestNextDhikr() } },
+                    onSkip = { scope.launch { journeyEngine.skipCurrentDhikr() } },
+                    onOpenList = { journeyEngine.setDhikrListSheetVisible(true) },
+                    modifier = Modifier.testTag("journey_navigation_controls")
+                )
             }
         }
     }
@@ -479,7 +624,7 @@ fun HomeScreen(
             },
             text = {
                 Text(
-                    text = "هل أنت متأكد من تصفير العداد الحالي؟ لن يؤثر هذا على إحصائياتك السابقة.",
+                    text = "هل أنت متأكد من تصفير العداد الحالي؟ لن يؤثر هذا على إحصائياتك السابقة أو بقية الرحلة.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -618,6 +763,71 @@ fun HomeScreen(
                 TextButton(onClick = { showDetailsDialog = false }) {
                     Text(text = "إغلاق")
                 }
+            }
+        )
+    }
+
+    // Next Dhikr Preview Dialog
+    if (journeyState.isNextPreviewVisible && journeyState.nextDhikr != null) {
+        NextDhikrPreviewDialog(
+            nextDhikr = journeyState.nextDhikr,
+            targetCount = journeyState.nextItem?.targetCount ?: 33L,
+            useArabicIndic = useArabicIndic,
+            onStart = {
+                scope.launch { journeyEngine.startNextDhikrFromPreview() }
+            },
+            onDismiss = {
+                journeyEngine.dismissNextPreview()
+            }
+        )
+    }
+
+    // Incomplete Dhikr Warning Dialog
+    if (journeyState.isIncompleteWarningVisible) {
+        IncompleteDhikrWarningDialog(
+            onConfirm = {
+                scope.launch { journeyEngine.confirmProceedIncomplete() }
+            },
+            onDismiss = {
+                journeyEngine.dismissIncompleteWarning()
+            }
+        )
+    }
+
+    // Journey List Sheet
+    if (journeyState.isDhikrListSheetVisible && journeyState.journey != null) {
+        JourneyListModalSheet(
+            journeyTitle = journeyState.journey.title,
+            items = journeyState.items,
+            dhikrMap = journeyState.dhikrMap,
+            currentIndex = journeyState.currentItemIndex,
+            useArabicIndic = useArabicIndic,
+            onSelectItem = { position ->
+                scope.launch { journeyEngine.selectItemFromList(position) }
+            },
+            onDismiss = {
+                journeyEngine.setDhikrListSheetVisible(false)
+            }
+        )
+    }
+
+    // Journey Overview Dialog
+    if (journeyState.isOverviewVisible) {
+        JourneyOverviewDialog(
+            collectionTitle = journeyState.overviewCollectionTitle,
+            items = journeyState.overviewItems,
+            hasExistingJourney = journeyState.existingUnfinishedJourney != null,
+            completedCount = journeyState.existingUnfinishedJourney?.completedItemsCount ?: 0,
+            useArabicIndic = useArabicIndic,
+            onStart = { forceRestart ->
+                scope.launch {
+                    val colId = journeyState.overviewCollectionId ?: "cat_morning"
+                    val title = journeyState.overviewCollectionTitle
+                    journeyEngine.startJourney(colId, title, forceRestart)
+                }
+            },
+            onDismiss = {
+                journeyEngine.dismissOverview()
             }
         )
     }

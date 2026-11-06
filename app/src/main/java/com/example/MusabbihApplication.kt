@@ -19,6 +19,7 @@ class MusabbihApplication : Application() {
     val database by lazy { MusabbihDatabase.getInstance(this) }
     val userPreferencesRepository by lazy { UserPreferencesRepository(this) }
     val counterEngine by lazy { CounterEngine(database) }
+    val journeyEngine by lazy { com.example.core.engine.JourneyEngine(database, counterEngine) }
     val hapticFeedbackHelper by lazy { HapticFeedbackHelper(this) }
     val backupManager by lazy { BackupManager(this, database) }
 
@@ -33,7 +34,7 @@ class MusabbihApplication : Application() {
             }
 
             val dhikrDao = database.dhikrDao()
-            if (dhikrDao.getBuiltInCount() == 0) {
+            if (dhikrDao.getBuiltInCount() < DhikrSeedData.getBuiltInDhikrs().size) {
                 dhikrDao.insertDhikrs(DhikrSeedData.getBuiltInDhikrs())
             }
         }

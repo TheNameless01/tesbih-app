@@ -61,6 +61,7 @@ fun MusabbihApp(
         .collectAsState(initial = com.example.core.datastore.UserPreferences())
 
     val counterUiState by app.counterEngine.uiState.collectAsState()
+    val journeyUiState by app.journeyEngine.uiState.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -116,12 +117,23 @@ fun MusabbihApp(
             composable(Screen.Home.route) {
                 HomeScreen(
                     counterEngine = app.counterEngine,
+                    journeyEngine = app.journeyEngine,
                     hapticHelper = app.hapticFeedbackHelper,
                     hapticEnabled = userPreferences.hapticEnabled,
                     useArabicIndic = userPreferences.useArabicIndicNumerals,
                     uiState = counterUiState,
+                    journeyState = journeyUiState,
                     onNavigateToAdhkar = {
                         navController.navigate(Screen.Adhkar.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToHistory = {
+                        navController.navigate(Screen.History.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
@@ -136,8 +148,18 @@ fun MusabbihApp(
                 AdhkarScreen(
                     database = app.database,
                     counterEngine = app.counterEngine,
+                    journeyEngine = app.journeyEngine,
                     useArabicIndic = userPreferences.useArabicIndicNumerals,
                     onDhikrSelected = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onStartJourney = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true

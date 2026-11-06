@@ -45,9 +45,14 @@ sealed interface CounterEvent {
 class CounterEngine(
     private val database: MusabbihDatabase
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(job + Dispatchers.Default)
     private val counterDao = database.counterDao()
     private val dhikrDao = database.dhikrDao()
+
+    fun cleanup() {
+        job.cancel()
+    }
 
     private val _uiState = MutableStateFlow(CounterUiState())
     val uiState: StateFlow<CounterUiState> = _uiState.asStateFlow()

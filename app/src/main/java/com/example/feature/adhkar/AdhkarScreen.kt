@@ -72,8 +72,10 @@ import java.util.UUID
 fun AdhkarScreen(
     database: MusabbihDatabase,
     counterEngine: CounterEngine,
+    journeyEngine: com.example.core.engine.JourneyEngine,
     useArabicIndic: Boolean,
     onDhikrSelected: () -> Unit,
+    onStartJourney: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -211,6 +213,58 @@ fun AdhkarScreen(
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
+                }
+            }
+
+            // Guided Dhikr Journey Banner
+            val activeCat = categories.find { it.id == selectedCategoryId }
+            val journeyCatId = activeCat?.id ?: "cat_morning"
+            val journeyTitle = activeCat?.nameArabic ?: "أذكار الصباح"
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "رحلة $journeyTitle",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "إتمام متتابع ومرشد لأذكار هذه المجموعة",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                journeyEngine.openJourneyOverview(journeyCatId, journeyTitle)
+                                onStartJourney()
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("start_journey_cta_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "ابدأ", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("ابدأ الرحلة")
+                    }
                 }
             }
 

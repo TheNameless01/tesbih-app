@@ -16,13 +16,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassBottom
 import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,14 +45,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.database.MusabbihDatabase
 import com.example.core.database.entity.CounterSessionEntity
 import com.example.core.database.entity.DhikrEntity
+import com.example.core.database.entity.DhikrJourneyEntity
+import com.example.core.database.entity.DhikrJourneyItemEntity
 import com.example.core.ui.ArabicUtils
 import com.example.ui.theme.NotoNaskhArabicFamily
+import com.example.ui.theme.SuccessGreen
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -57,7 +64,8 @@ enum class HistoryFilter(val label: String) {
     TODAY("اليوم"),
     THIS_WEEK("هذا الأسبوع"),
     THIS_MONTH("هذا الشهر"),
-    ALL("الكل")
+    ALL("الكل"),
+    JOURNEYS("رحلات الأذكار")
 }
 
 @Composable
@@ -68,11 +76,14 @@ fun HistoryScreen(
 ) {
     val counterDao = database.counterDao()
     val dhikrDao = database.dhikrDao()
+    val journeyDao = database.journeyDao()
 
     var selectedFilter by remember { mutableStateOf(HistoryFilter.ALL) }
     var selectedSessionForDetail by remember { mutableStateOf<Pair<CounterSessionEntity, DhikrEntity?>?>(null) }
+    var selectedJourneyForDetail by remember { mutableStateOf<DhikrJourneyEntity?>(null) }
 
     val allSessions by counterDao.getAllSessions().collectAsState(initial = emptyList())
+    val allJourneys by journeyDao.getAllJourneys().collectAsState(initial = emptyList())
 
     // Filter sessions based on timestamp
     val now = LocalDate.now()
@@ -87,6 +98,7 @@ fun HistoryScreen(
             HistoryFilter.THIS_WEEK -> s.startedAt >= weekStartMillis
             HistoryFilter.THIS_MONTH -> s.startedAt >= monthStartMillis
             HistoryFilter.ALL -> true
+            HistoryFilter.JOURNEYS -> false
         }
     }
 
@@ -98,13 +110,13 @@ fun HistoryScreen(
         // Screen Header
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
             Text(
-                text = "سجل الجلسات",
+                text = "سجل الجلسات والرحلات",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "أرشيف جلسات الذكر والتسبيح السابقة",
+                text = "أرشيف جلسات الذكر والتسبيح ورحلات الأذكار السابقة",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -125,54 +137,95 @@ fun HistoryScreen(
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    ),
+                    modifier = Modifier.testTag("history_filter_${filter.name}")
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // History List or Empty State
-        if (filteredSessions.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = "السجل فارغ",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(54.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "لا توجد جلسات مسجلة في هذه الفترة.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        // When JOURNEYS filter is selected
+        if (selectedFilter == HistoryFilter.JOURNEYS) {
+            if (allJourneys.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Timeline,
+                            contentDescription = "لا توجد رحلات",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(54.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "لا توجد رحلات أذكار مسجلة بعد.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(allJourneys, key = { it.id }) { journey ->
+                        HistoryJourneyCard(
+                            journey = journey,
+                            useArabicIndic = useArabicIndic,
+                            onClick = { selectedJourneyForDetail = journey }
+                        )
+                    }
                 }
             }
         } else {
-            LazyColumn(
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(filteredSessions, key = { it.id }) { session ->
-                    val dhikr by produceState<DhikrEntity?>(initialValue = null, key1 = session.dhikrId) {
-                        value = dhikrDao.getDhikrById(session.dhikrId)
+            // Sessions List or Empty State
+            if (filteredSessions.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "السجل فارغ",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(54.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "لا توجد جلسات مسجلة في هذه الفترة.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-
-                    HistorySessionCard(
-                        session = session,
-                        dhikr = dhikr,
-                        useArabicIndic = useArabicIndic,
-                        onClick = {
-                            selectedSessionForDetail = Pair(session, dhikr)
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(filteredSessions, key = { it.id }) { session ->
+                        val dhikr by produceState<DhikrEntity?>(initialValue = null, key1 = session.dhikrId) {
+                            value = dhikrDao.getDhikrById(session.dhikrId)
                         }
-                    )
+
+                        HistorySessionCard(
+                            session = session,
+                            dhikr = dhikr,
+                            useArabicIndic = useArabicIndic,
+                            onClick = {
+                                selectedSessionForDetail = Pair(session, dhikr)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -250,6 +303,181 @@ fun HistoryScreen(
                 }
             }
         )
+    }
+
+    // Journey Detail Dialog
+    if (selectedJourneyForDetail != null) {
+        val j = selectedJourneyForDetail!!
+        val journeyItems by produceState<List<DhikrJourneyItemEntity>>(initialValue = emptyList(), key1 = j.id) {
+            value = journeyDao.getJourneyItems(j.id)
+        }
+
+        AlertDialog(
+            onDismissRequest = { selectedJourneyForDetail = null },
+            title = {
+                Text(
+                    text = "تفاصيل رحلة ${j.title}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "الحالة: ${if (j.status == "COMPLETED") "مكتملة بنجاح ✓" else "قيد التقدم"}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (j.status == "COMPLETED") SuccessGreen else MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "${ArabicUtils.formatNumber(j.totalRepetitions, useArabicIndic)} تسبيحة",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "الأذكار المكتملة: ${ArabicUtils.formatNumber(j.completedItemsCount.toLong(), useArabicIndic)} من ${ArabicUtils.formatNumber(j.totalItemsCount.toLong(), useArabicIndic)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "وقت البدء: ${ArabicUtils.formatDateTime(j.startedAt, useArabicIndic)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (j.completedAt != null) {
+                        Text(
+                            text = "وقت الإتمام: ${ArabicUtils.formatDateTime(j.completedAt, useArabicIndic)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "الأذكار المتضمنة:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    LazyColumn(modifier = Modifier.height(140.dp)) {
+                        itemsIndexed(journeyItems) { idx, item ->
+                            val dhikr by produceState<DhikrEntity?>(initialValue = null, key1 = item.dhikrId) {
+                                value = dhikrDao.getDhikrById(item.dhikrId)
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${ArabicUtils.formatNumber((idx + 1).toLong(), useArabicIndic)}. ${dhikr?.title ?: (dhikr?.arabicText?.take(18) ?: "")}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${ArabicUtils.formatNumber(item.currentCount, useArabicIndic)} / ${ArabicUtils.formatNumber(item.targetCount, useArabicIndic)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (item.status == "COMPLETED") SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedJourneyForDetail = null }) {
+                    Text("إغلاق")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun HistoryJourneyCard(
+    journey: DhikrJourneyEntity,
+    useArabicIndic: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "رحلة ${journey.title}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (journey.status == "COMPLETED") SuccessGreen.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = if (journey.status == "COMPLETED") "مكتملة ✓" else "قيد التقدم",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (journey.status == "COMPLETED") SuccessGreen else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${ArabicUtils.formatNumber(journey.completedItemsCount.toLong(), useArabicIndic)} من ${ArabicUtils.formatNumber(journey.totalItemsCount.toLong(), useArabicIndic)} أذكار مكتملة",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = ArabicUtils.formatDateTime(journey.startedAt, useArabicIndic),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = ArabicUtils.formatNumber(journey.totalRepetitions, useArabicIndic),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "تسبيحة",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
