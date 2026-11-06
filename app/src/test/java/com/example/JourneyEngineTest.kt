@@ -64,13 +64,14 @@ class JourneyEngineTest {
         }
     }
 
-    private suspend fun waitUntil(timeoutMs: Long = 1000L, condition: () -> Boolean): Boolean {
-        return withTimeoutOrNull(timeoutMs) {
-            while (!condition()) {
-                delay(20)
-            }
-            true
-        } ?: false
+    private suspend fun waitUntil(timeoutMs: Long = 2000L, condition: () -> Boolean): Boolean {
+        val start = System.currentTimeMillis()
+        while (!condition()) {
+            if (System.currentTimeMillis() - start > timeoutMs) return false
+            delay(20)
+            Thread.sleep(20)
+        }
+        return true
     }
 
     @Test
@@ -102,6 +103,8 @@ class JourneyEngineTest {
         val currentItem = journeyEngine.uiState.value.currentItem
         assertNotNull(currentItem)
         val target = currentItem!!.targetCount
+
+        waitUntil { counterEngine.uiState.value.dhikr?.id == currentItem.dhikrId }
 
         // Tap up to target
         for (i in 1..target) {

@@ -110,6 +110,10 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.retrofit)
+  implementation(libs.converter.moshi)
+  implementation(libs.moshi.kotlin)
+  implementation(libs.play.services.location)
 
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

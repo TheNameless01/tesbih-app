@@ -89,6 +89,11 @@ import com.example.feature.journey.JourneyOverviewDialog
 import com.example.feature.journey.NextDhikrPreviewDialog
 import com.example.ui.theme.GoldGlow
 import com.example.ui.theme.NotoNaskhArabicFamily
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import com.example.feature.prayer.presentation.home.PrayerTimesHomeCard
+import com.example.feature.prayer.presentation.setup.PrayerQuickSetupDialog
+import com.example.feature.prayer.presentation.timetable.PrayerTimetableDialog
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -102,11 +107,21 @@ fun HomeScreen(
     useArabicIndic: Boolean,
     uiState: CounterUiState,
     journeyState: JourneyUiState,
+    prayerTimesRepo: com.example.feature.prayer.data.repository.PrayerTimesRepository,
+    prayerPreferencesRepo: com.example.feature.prayer.data.repository.PrayerPreferencesRepository,
+    prayerLocationHelper: com.example.feature.prayer.data.location.PrayerLocationHelper,
     onNavigateToAdhkar: () -> Unit,
     onNavigateToHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prayerSettings by prayerPreferencesRepo.prayerSettingsFlow.collectAsState(initial = com.example.feature.prayer.domain.model.PrayerSettings())
+    val prayerSchedule by prayerTimesRepo.observeDailySchedule().collectAsState(initial = null)
+    var showPrayerSetupDialog by remember { mutableStateOf(false) }
+    var showPrayerTimetableDialog by remember { mutableStateOf(false) }
+    var isRefreshingPrayer by remember { mutableStateOf(false) }
+
     var showResetDialog by remember { mutableStateOf(false) }
     var showTargetDialog by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
@@ -218,6 +233,28 @@ fun HomeScreen(
                     Text(text = "اختر ذكراً", style = MaterialTheme.typography.labelMedium)
                 }
             }
+
+            // Prayer Times Card
+            PrayerTimesHomeCard(
+                settings = prayerSettings,
+                schedule = prayerSchedule,
+                isLoading = isRefreshingPrayer,
+                useArabicIndic = useArabicIndic,
+                onOpenSetup = { showPrayerSetupDialog = true },
+                onOpenTimetable = { showPrayerTimetableDialog = true },
+                onToggleExpanded = { expanded ->
+                    scope.launch { prayerPreferencesRepo.setHomeCardExpanded(expanded) }
+                },
+                onRefresh = {
+                    isRefreshingPrayer = true
+                    scope.launch {
+                        prayerTimesRepo.refreshPrayerTimes(force = true)
+                        com.example.feature.prayer.scheduling.PrayerAlarmScheduler.reconcileAlarms(context)
+                        isRefreshingPrayer = false
+                    }
+                },
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
 
             // If a journey is active, show the Guided Journey Header
             if (journeyState.isJourneyActive && journeyState.journey != null) {
@@ -828,6 +865,46 @@ fun HomeScreen(
             },
             onDismiss = {
                 journeyEngine.dismissOverview()
+            }
+        )
+    }
+
+    // Prayer Quick Setup Dialog
+    if (showPrayerSetupDialog) {
+        PrayerQuickSetupDialog(
+            locationHelper = prayerLocationHelper,
+            onDismiss = { showPrayerSetupDialog = false },
+            onSaveAndDownload = { mode, lat, lng, name, tz, methodId, schoolId, enableAdhan ->
+                scope.launch {
+                    prayerPreferencesRepo.setLocation(mode, lat, lng, name, tz)
+                    prayerPreferencesRepo.setCalculationMethod(methodId)
+                    prayerPreferencesRepo.setAsrSchool(schoolId)
+                    prayerPreferencesRepo.setMasterAdhanEnabled(enableAdhan)
+                    showPrayerSetupDialog = false
+                    isRefreshingPrayer = true
+                    prayerTimesRepo.refreshPrayerTimes(force = true)
+                    com.example.feature.prayer.scheduling.PrayerAlarmScheduler.reconcileAlarms(context)
+                    isRefreshingPrayer = false
+                }
+            }
+        )
+    }
+
+    // Prayer Timetable Dialog
+    if (showPrayerTimetableDialog) {
+        PrayerTimetableDialog(
+            schedule = prayerSchedule,
+            settings = prayerSettings,
+            isLoading = isRefreshingPrayer,
+            useArabicIndic = useArabicIndic,
+            onDismiss = { showPrayerTimetableDialog = false },
+            onRefresh = {
+                isRefreshingPrayer = true
+                scope.launch {
+                    prayerTimesRepo.refreshPrayerTimes(force = true)
+                    com.example.feature.prayer.scheduling.PrayerAlarmScheduler.reconcileAlarms(context)
+                    isRefreshingPrayer = false
+                }
             }
         )
     }

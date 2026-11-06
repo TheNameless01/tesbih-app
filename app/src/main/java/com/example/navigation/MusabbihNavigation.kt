@@ -123,6 +123,9 @@ fun MusabbihApp(
                     useArabicIndic = userPreferences.useArabicIndicNumerals,
                     uiState = counterUiState,
                     journeyState = journeyUiState,
+                    prayerTimesRepo = app.prayerTimesRepository,
+                    prayerPreferencesRepo = app.prayerPreferencesRepository,
+                    prayerLocationHelper = app.prayerLocationHelper,
                     onNavigateToAdhkar = {
                         navController.navigate(Screen.Adhkar.route) {
                             popUpTo(navController.graph.findStartDestination().id) {
@@ -189,7 +192,10 @@ fun MusabbihApp(
                 SettingsScreen(
                     userPreferences = userPreferences,
                     preferencesRepository = app.userPreferencesRepository,
-                    backupManager = app.backupManager
+                    backupManager = app.backupManager,
+                    prayerPreferencesRepo = app.prayerPreferencesRepository,
+                    prayerTimesRepo = app.prayerTimesRepository,
+                    prayerLocationHelper = app.prayerLocationHelper
                 )
             }
         }

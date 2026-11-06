@@ -10,6 +10,7 @@ import com.example.core.database.dao.CategoryDao
 import com.example.core.database.dao.CounterDao
 import com.example.core.database.dao.DhikrDao
 import com.example.core.database.dao.JourneyDao
+import com.example.core.database.dao.PrayerDao
 import com.example.core.database.entity.CounterActionEntity
 import com.example.core.database.entity.CounterSessionEntity
 import com.example.core.database.entity.DailySummaryEntity
@@ -17,6 +18,7 @@ import com.example.core.database.entity.DhikrCategoryEntity
 import com.example.core.database.entity.DhikrEntity
 import com.example.core.database.entity.DhikrJourneyEntity
 import com.example.core.database.entity.DhikrJourneyItemEntity
+import com.example.core.database.entity.PrayerTimeEntity
 import com.example.core.database.entity.SessionDailyTotalsEntity
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -61,6 +63,34 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS prayer_time_cache (
+                id TEXT PRIMARY KEY NOT NULL,
+                dateString TEXT NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                locationName TEXT NOT NULL,
+                timezone TEXT NOT NULL,
+                fajr TEXT NOT NULL,
+                sunrise TEXT NOT NULL,
+                dhuhr TEXT NOT NULL,
+                asr TEXT NOT NULL,
+                maghrib TEXT NOT NULL,
+                isha TEXT NOT NULL,
+                methodId INTEGER NOT NULL DEFAULT 19,
+                schoolId INTEGER NOT NULL DEFAULT 0,
+                updatedAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_prayer_time_cache_dateString ON prayer_time_cache(dateString)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_prayer_time_cache_dateString_methodId_schoolId ON prayer_time_cache(dateString, methodId, schoolId)")
+    }
+}
+
 @Database(
     entities = [
         DhikrEntity::class,
@@ -70,9 +100,10 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         SessionDailyTotalsEntity::class,
         DailySummaryEntity::class,
         DhikrJourneyEntity::class,
-        DhikrJourneyItemEntity::class
+        DhikrJourneyItemEntity::class,
+        PrayerTimeEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MusabbihDatabase : RoomDatabase() {
@@ -81,6 +112,7 @@ abstract class MusabbihDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun counterDao(): CounterDao
     abstract fun journeyDao(): JourneyDao
+    abstract fun prayerDao(): PrayerDao
 
     companion object {
         @Volatile
@@ -93,7 +125,7 @@ abstract class MusabbihDatabase : RoomDatabase() {
                     MusabbihDatabase::class.java,
                     "musabbih_database.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration(false)
                     .build()
                 INSTANCE = instance

@@ -71,16 +71,22 @@ import com.example.core.ui.ArabicUtils
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
+import androidx.compose.runtime.collectAsState
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     userPreferences: UserPreferences,
     preferencesRepository: UserPreferencesRepository,
     backupManager: BackupManager,
+    prayerPreferencesRepo: com.example.feature.prayer.data.repository.PrayerPreferencesRepository,
+    prayerTimesRepo: com.example.feature.prayer.data.repository.PrayerTimesRepository,
+    prayerLocationHelper: com.example.feature.prayer.data.location.PrayerLocationHelper,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prayerSettings by prayerPreferencesRepo.prayerSettingsFlow.collectAsState(initial = com.example.feature.prayer.domain.model.PrayerSettings())
 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf<Pair<BackupPreview, JSONObject>?>(null) }
@@ -366,6 +372,17 @@ fun SettingsScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Prayer Times and Adhan Section
+        com.example.feature.prayer.presentation.settings.PrayerSettingsSection(
+            settings = prayerSettings,
+            preferencesRepo = prayerPreferencesRepo,
+            timesRepo = prayerTimesRepo,
+            locationHelper = prayerLocationHelper,
+            useArabicIndic = userPreferences.useArabicIndicNumerals
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
 
